@@ -1,0 +1,108 @@
+# Namespace for MariaDB
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mariadb
+
+---
+
+# ConfigMap for MariaDB configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-config
+  namespace: mariadb
+  labels:
+        id: c0904322   # replace with your actual college ID
+        app: nginx
+        env: dev
+data:
+  mysql-database: wordpress
+  mysql-user: wordpress
+
+---
+
+# Secret for MariaDB sensitive data (root and user passwords)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mariadb-secret
+  namespace: mariadb
+  labels:
+        id: c0904322   # replace with your actual college ID
+        app: nginx
+        env: dev
+type: Opaque
+data:
+  mysql-root-password: d29yZHByZXNz   # Replace with base64-encoded root password
+  mysql-password: d29yZHByZXNz        # Replace with base64-encoded user password
+
+---
+
+# Deployment for MariaDB
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: mariadb
+  labels:
+        id: c0904322   # replace with your actual college ID
+        app: nginx
+        env: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.6.4-focal
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: mysql-root-password
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: mariadb-config
+                  key: mysql-database
+            - name: MYSQL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: mariadb-config
+                  key: mysql-user
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: mysql-password
+
+---
+
+# Service to expose MariaDB internally
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: mariadb
+  labels:
+        id: c0904322   # replace with your actual college ID
+        app: nginx
+        env: dev
+spec:
+  type: ClusterIP
+  selector:
+    app: mariadb
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
